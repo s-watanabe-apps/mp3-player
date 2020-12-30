@@ -1,0 +1,67 @@
+<resources>
+    <string name="app_name">音楽プレイヤー</string>
+
+    <string name="dialog_ok">OK</string>
+    <string name="dialog_cancel">Cancel</string>
+
+    <string name="search_json_file">MP3ファイル検索中...</string>
+
+    <string name="permission_read_external_storage_title">ストレージへのアクセス権限について</string>
+    <string name="permission_read_external_storage_body">このアプリはストレージからMP3ファイルを検索します。\nそのためストレージへのアクセス権限が必要です。</string>
+
+    <string name="permission_write_external_storage_title">ストレージへの書き込み権限について</string>
+    <string name="permission_write_external_storage_body">編集機能を使うにはストレージへの書き込み権限が必要です。</string>
+
+    <string name="sort_title">並べ替え</string>
+    <string-array name="sort_names">
+        <item>ディレクトリ順</item>
+        <item>サイズの大きい順</item>
+        <item>更新日付の新しい順</item>
+    </string-array>
+
+    <string name="list_menu_hide">非表示にする</string>
+    <string name="list_menu_rename">ファイル名を変更する</string>
+
+    <string name="rename_dialog_text">ファイル名を変更します。</string>
+    <string name="rename_dialog_alert">※注意\n他のアプリケーションで使用されているファイルを変更する場合、アプリケーションが正しく動作しなくなる可能性がありますので、ファイル名の変更は自己責任でお願いします。</string>
+
+    <string name="setting_background_title">背景</string>
+    <string name="setting_background_white">白い背景</string>
+    <string name="setting_background_black">黒い背景</string>
+
+    <string name="setting_hide_clear_title">非表示クリア</string>
+    <string name="setting_hide_clear_text">非表示にしたファイルをもとに戻します。</string>
+    <string name="setting_hide_clear_button">戻す</string>
+    <string name="setting_hide_clear_message">非表示の設定を戻しました。</string>
+
+    <string name="mp3_volume_title">ボリューム設定</string>
+    <string name="mp3_list_title">選曲リスト</string>
+    <string name="mp3_play_list_prepare">再生リストを準備中...</string>
+
+    <string name="list_color_white_background">#FFFFFF</string>
+    <string name="list_color_white_filename">#303F9F</string>
+    <string name="list_color_white_normal_text">#777777</string>
+    <string name="list_color_white_sort_text">#FF4081</string>
+
+    <string name="list_color_black_background">#111111</string>
+    <string name="list_color_black_filename">#6F84B8</string>
+    <string name="list_color_black_normal_text">#777777</string>
+    <string name="list_color_black_sort_text">#FF4081</string>
+
+    <string name="json_color_white_background">#FFFFFF</string>
+    <string name="json_color_white_edit_text">#000000</string>
+    <string name="json_color_white_element_string">#610B0B</string>
+    <string name="json_color_white_element_decimal">#0B6121</string>
+    <string name="json_color_white_element_bool">#303F9F</string>
+    <string name="json_color_white_normal_text">#777777</string>
+
+    <string name="json_color_black_background">#111111</string>
+    <string name="json_color_black_edit_text">#FFFFFF</string>
+    <string name="json_color_black_element_string">#B65F5F</string>
+    <string name="json_color_black_element_decimal">#5FB676</string>
+    <string name="json_color_black_element_bool">#636FCF</string>
+    <string name="json_color_black_normal_text">#777777</string>
+
+    <string name="ad_unit_id">ca-app-pub-3940256099942544/6300978111</string>
+    <string name="interstitial_ad_unit_id">ca-app-pub-3940256099942544/1033173712</string>
+</resources>
