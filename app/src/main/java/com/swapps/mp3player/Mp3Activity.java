@@ -31,6 +31,8 @@ import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import static com.swapps.mp3player.MediaUtils.getDuration;
+
 public class Mp3Activity extends AppCompatActivity {
     private UpdateReceiver updateReceiver;
     private IntentFilter intentFilter;
@@ -73,8 +75,8 @@ public class Mp3Activity extends AppCompatActivity {
     }
 
     private void init() {
-        preferences = getSharedPreferences("preferences", Context.MODE_PRIVATE);
-        if(preferences.getInt("background", 0) == 0) {
+        preferences = getSharedPreferences(SettingActivity.PREFERENCES_NAME, Context.MODE_PRIVATE);
+        if(preferences.getInt(SettingActivity.SETTING_BACKGROUND, 0) == 0) {
             findViewById(R.id.layoutMp3).setBackgroundColor(Color.parseColor(getString(R.string.list_color_white_background)));
             ((TextView) findViewById(R.id.textVolume)).setTextColor(Color.parseColor(getString(R.string.list_color_black_background)));
             ((TextView) findViewById(R.id.textSongList)).setTextColor(Color.parseColor(getString(R.string.list_color_black_background)));
@@ -129,7 +131,7 @@ public class Mp3Activity extends AppCompatActivity {
             String name = new File(path).getName();
             progressDialog.setMessage(name);
             item.setName(name);
-            item.setDuration(getDuration(new File(path)));
+            item.setDuration(MediaUtils.getDuration(new File(path)));
             listItems.add(item);
         }
         adapter = new SongListAdapter(this, R.layout.song_list_item, listItems);
@@ -137,20 +139,7 @@ public class Mp3Activity extends AppCompatActivity {
         adapter.notifyDataSetChanged();
     }
 
-    public static int getDuration(File audioFile) {
-        try {
-            MediaPlayer mediaPlayer = new MediaPlayer();
-            FileInputStream inputStream = new FileInputStream(audioFile);;
-            FileDescriptor fileDescriptor = inputStream.getFD();
-            mediaPlayer.setDataSource(fileDescriptor);
-            mediaPlayer.prepare();
-            int length = mediaPlayer.getDuration();
-            mediaPlayer.release();
-            return length / 1000;
-        } catch (Exception e) {
-            return 0;
-        }
-    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();

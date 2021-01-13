@@ -44,6 +44,7 @@ import java.io.RandomAccessFile;
 import java.lang.reflect.Array;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
@@ -56,10 +57,15 @@ import java.util.TimerTask;
 
 public class MainActivity extends AppCompatActivity {
 
-    public static final int REQUEST_PERMISSION_READ_EXTERNAL_STORAGE = 1;
+    public static final int REQUEST_PERMISSION_EXTERNAL_STORAGE = 1;
     public static final int REQUEST_CODE_SETTING = 2;
     public static final int REQUEST_CODE_MP3 = 3;
     public static final String tag ="debug";
+
+    private static String[] PERMISSIONS_STORAGE = {
+            Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE
+    };
 
     ProgressDialog progressDialog;
     Handler handler;
@@ -68,6 +74,7 @@ public class MainActivity extends AppCompatActivity {
     ListAdapter adapter;
     SharedPreferences preferences;
     Set<String> hideFiles;
+    List<String> extensions;
 
     // 全面広告
     private InterstitialAd interstitialAd;
@@ -130,7 +137,7 @@ public class MainActivity extends AppCompatActivity {
      * @return void
      */
     public void checkPermission() {
-        if(checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+        if(checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             new AlertDialog.Builder(MainActivity.this)
                     .setTitle(getString(R.string.permission_read_external_storage_title))
                     .setMessage(getString(R.string.permission_read_external_storage_body))
@@ -144,7 +151,7 @@ public class MainActivity extends AppCompatActivity {
                     .setPositiveButton(getString(R.string.dialog_ok), new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
-                            requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, REQUEST_PERMISSION_READ_EXTERNAL_STORAGE);
+                            requestPermissions(PERMISSIONS_STORAGE, REQUEST_PERMISSION_EXTERNAL_STORAGE);
                         }
                     })
                     .show();
@@ -164,9 +171,8 @@ public class MainActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
         switch(requestCode) {
-            case REQUEST_PERMISSION_READ_EXTERNAL_STORAGE:
+            case REQUEST_PERMISSION_EXTERNAL_STORAGE:
                 if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    //
                     init();
                 } else{
                     //Toast.makeText(this, getString(R.string.permission_no_granted_message), Toast.LENGTH_SHORT).show();
@@ -184,7 +190,7 @@ public class MainActivity extends AppCompatActivity {
      * @return void
      */
     private void init() {
-        preferences = getSharedPreferences("preferences", Context.MODE_PRIVATE);
+        preferences = getSharedPreferences(SettingActivity.PREFERENCES_NAME, Context.MODE_PRIVATE);
 
         AdView adView = findViewById(R.id.adView);
         AdRequest adRequest = new AdRequest.Builder().build();
@@ -195,9 +201,16 @@ public class MainActivity extends AppCompatActivity {
         loadInterstitial();
 
         // 非表示ファイルのロード
-        Set<String> oldHideFiles = preferences.getStringSet("hideFiles",  new HashSet<String>());
+        Set<String> oldHideFiles = preferences.getStringSet(SettingActivity.SETTING_HIDE_FILES,  new HashSet<String>());
         hideFiles = new HashSet<>();
         hideFiles.addAll(oldHideFiles);
+
+        // 検索対象
+        extensions = new ArrayList<>();
+        extensions.add("mp3");
+        if (preferences.getInt(SettingActivity.SETTING_INCLUDE_MP4, 0) == 1) {
+            extensions.add("mp4");
+        }
 
         listView = findViewById(R.id.list_view);
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -328,12 +341,13 @@ public class MainActivity extends AppCompatActivity {
                 //Log.d(TAG, "file:" + subFile.getName());
                 int pos = subFile.getName().lastIndexOf(".");
                 if (pos != -1) {
+                    String fileExtensions = subFile.getName().substring(pos + 1).toLowerCase();
                     if(!subFile.getName().substring(0, 1).equals(".")
-                            && subFile.getName().substring(pos + 1).toLowerCase().equals("mp3")) {
+                            && extensions.indexOf(fileExtensions) >= 0) {
                         Item item = new Item();
                         item.setName(subFile.getName());
                         item.setPath(subFile.getParent());
-                        item.setSize(subFile.length());
+                        item.setSize(MediaUtils.getDuration(subFile));
                         item.setLastModified(new Date(subFile.lastModified()));
                         listItems.add(item);
                     }
@@ -347,7 +361,7 @@ public class MainActivity extends AppCompatActivity {
     public void setListView() {
         clearListView();
 
-        if(preferences.getInt("background", 0) == 0) {
+        if(preferences.getInt(SettingActivity.SETTING_BACKGROUND, 0) == 0) {
             listView.setBackgroundColor(Color.parseColor(getString(R.string.list_color_white_background)));
         } else{
             listView.setBackgroundColor(Color.parseColor(getString(R.string.list_color_black_background)));
@@ -362,9 +376,9 @@ public class MainActivity extends AppCompatActivity {
             Collections.sort(listItems, new DirectoryComparator());
         }
 
-        for (int i = 0; i < listItems.size(); i++) {
-            Log.d("wata", "name:" + listItems.get(i).getName());
-        }
+        //for (int i = 0; i < listItems.size(); i++) {
+        //    Log.d("wata", "name:" + listItems.get(i).getName());
+        //}
 
         adapter = new ListAdapter(MainActivity.this, R.layout.list_item, listItems);
         listView.setAdapter(adapter);
@@ -439,20 +453,20 @@ public class MainActivity extends AppCompatActivity {
                     setListView();
                 } else {
                     //その他
-                    Toast.makeText(this, "What!?", Toast.LENGTH_SHORT).show();
+                    //Toast.makeText(this, "What!?", Toast.LENGTH_SHORT).show();
                 }
                 break;
             case REQUEST_CODE_MP3:
                 // Mp3Activityから戻ってきた場合
-                if (resultCode == RESULT_OK) {
-                    int pos = data.getIntExtra("index", -1);
-                    if(pos > -1) {
-                        File file = new File(listItems.get(pos).getPath() + "/" + listItems.get(pos).getName());
-                        listItems.get(pos).setSize(file.length());
-                        listItems.get(pos).setLastModified(new Date(file.lastModified()));
-                        adapter.notifyDataSetChanged();
-                    }
-                }
+                //if (resultCode == RESULT_OK) {
+                //    int pos = data.getIntExtra("index", -1);
+                //    if(pos > -1) {
+                //        File file = new File(listItems.get(pos).getPath() + "/" + listItems.get(pos).getName());
+                //        listItems.get(pos).setSize(file.length());
+                //        listItems.get(pos).setLastModified(new Date(file.lastModified()));
+                //        adapter.notifyDataSetChanged();
+                //    }
+                //}
             default:
                 break;
         }
@@ -473,7 +487,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onContextItemSelected(MenuItem menuItem) {
-        AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuItem.getMenuInfo();
+        final AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuItem.getMenuInfo();
         final Item item = listItems.get(info.position);
 
         switch(menuItem.getItemId()){
@@ -484,12 +498,13 @@ public class MainActivity extends AppCompatActivity {
                     hideFiles.add(filePath);
                 }
                 SharedPreferences.Editor editor = preferences.edit();
-                editor.putStringSet("hideFiles", hideFiles);
+                editor.putStringSet(SettingActivity.SETTING_HIDE_FILES, hideFiles);
                 editor.apply();
 
                 listItems.remove(info.position);
                 setListView();
                 return true;
+/*
             case R.id.list_menu_rename:
                 // ファイル名を変更する
                 LayoutInflater inflater = LayoutInflater.from(this);
@@ -501,11 +516,13 @@ public class MainActivity extends AppCompatActivity {
                         .setPositiveButton("OK", new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
+                                String newFileName = ((EditText) renameLayout.findViewById(R.id.editRename)).getText().toString().trim() + ".mp3";
                                 renameFile(
                                         item.getPath() + "/" + item.getName(),
-                                        item.getPath() + "/" + ((EditText) renameLayout.findViewById(R.id.editRename))
-                                                .getText().toString().trim() + ".mp3"
+                                        item.getPath() + "/" + newFileName
                                 );
+                                listItems.get(info.position).setName(newFileName);
+                                adapter.notifyDataSetChanged();
                             }
                         })
                         .setNegativeButton("CANCEL", new DialogInterface.OnClickListener() {
@@ -516,6 +533,7 @@ public class MainActivity extends AppCompatActivity {
                         })
                         .show();
                 return true;
+ */
         }
         return false;
     }
@@ -524,44 +542,9 @@ public class MainActivity extends AppCompatActivity {
         File file = new File(targetFile);
         File dest = new File(renameFile);
         try {
-            copy(file, dest);
-            file.delete();
+            file.renameTo(dest);
         } catch (Exception e) {
-            Toast.makeText(this, "Error to move new app: " + file + " > " + dest, Toast.LENGTH_LONG).show();
+            Toast.makeText(this, e.getMessage(), Toast.LENGTH_LONG).show();
         }
-
-/*
-        if(canRename(file, dest)) {
-            if(!file.renameTo(dest)) {
-                Toast.makeText(this, "Error to move new app: " + file + " > " + dest, Toast.LENGTH_LONG).show();
-            }
-        } else {
-            try {
-                copy(file, dest);
-                file.delete();
-            } catch (Exception e) {
-                Toast.makeText(this, "Error to move new app: " + file + " > " + dest, Toast.LENGTH_LONG).show();
-            }
-        }
-*/
-    }
-
-    private void copy(final File f1, final File f2) throws IOException {
-        f2.createNewFile();
-
-        final RandomAccessFile file1 = new RandomAccessFile(f1, "r");
-        final RandomAccessFile file2 = new RandomAccessFile(f2, "rw");
-
-        file2.getChannel().write(file1.getChannel().map(FileChannel.MapMode.READ_ONLY, 0, f1.length()));
-
-        file1.close();
-        file2.close();
-    }
-
-    private boolean canRename(final File f1, final File f2) {
-        final String p1 = f1.getAbsolutePath().replaceAll("^(/mnt/|/)", "");
-        final String p2 = f2.getAbsolutePath().replaceAll("^(/mnt/|/)", "");
-
-        return p1.replaceAll("\\/\\w+", "").equals(p2.replaceAll("\\/\\w+", ""));
     }
 }

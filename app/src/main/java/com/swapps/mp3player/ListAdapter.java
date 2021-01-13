@@ -29,7 +29,7 @@ public class ListAdapter extends ArrayAdapter<Item> {
         this.resource = resource;
         this.items = items;
         this.inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        preferences = context.getSharedPreferences("preferences", Context.MODE_PRIVATE);
+        preferences = context.getSharedPreferences(SettingActivity.PREFERENCES_NAME, Context.MODE_PRIVATE);
     }
 
     @Override
@@ -42,7 +42,7 @@ public class ListAdapter extends ArrayAdapter<Item> {
             view = inflater.inflate(resource, null);
         }
 
-        int background = preferences.getInt("background", 0);
+        int background = preferences.getInt(SettingActivity.SETTING_BACKGROUND, 0);
         int backgroundColor;
         int filenameColor;
         int normalTextColor;
@@ -68,17 +68,17 @@ public class ListAdapter extends ArrayAdapter<Item> {
         final Item item = items.get(position);
 
         // ファイル名
-        TextView jsonName = view.findViewById(R.id.file_name);
-        jsonName.setText(item.getName());
-        jsonName.setTextColor(filenameColor);
+        TextView fileName = view.findViewById(R.id.file_name);
+        fileName.setText(item.getName());
+        fileName.setTextColor(filenameColor);
 
         // サイズ
-        TextView jsonSize = view.findViewById(R.id.file_size);
-        jsonSize.setText(String.format("%.1f", (double) item.getSize() / 1000000) + " MB");
+        TextView fileSize = view.findViewById(R.id.file_size);
+        fileSize.setText((item.getSize() / 60) + ":" + String.format("%02d", item.getSize() % 60));
         if(sort == 1) {
-            jsonSize.setTextColor(sortTextColor);
+            fileSize.setTextColor(sortTextColor);
         } else{
-            jsonSize.setTextColor(normalTextColor);
+            fileSize.setTextColor(normalTextColor);
         }
 
         // 最終更新

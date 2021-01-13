@@ -7,6 +7,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.KeyEvent;
 import android.view.View;
+import android.widget.CheckBox;
 import android.widget.ImageView;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
@@ -17,19 +18,24 @@ import java.util.Set;
 
 public class SettingActivity extends AppCompatActivity {
 
+    public static String PREFERENCES_NAME = "preferences";
+    public static String SETTING_BACKGROUND = "background";
+    public static String SETTING_INCLUDE_MP4 = "includeMp4";
+    public static String SETTING_HIDE_FILES = "hideFiles";
+
     SharedPreferences preferences;
     int background;
-    int storage;
-    int hideClear = 0;
+    int includeMp4;
+    int resultOk = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_setting);
 
-        preferences = getSharedPreferences("preferences", Context.MODE_PRIVATE);
-        background = preferences.getInt("background", 0);
-        storage = preferences.getInt("storage", 0);
+        preferences = getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE);
+        background = preferences.getInt(SETTING_BACKGROUND, 0);
+        includeMp4 = preferences.getInt(SETTING_INCLUDE_MP4, 0);
 
         // 背景の設定
         RadioGroup radioGroupBackground = findViewById(R.id.radioGroupBackground);
@@ -37,11 +43,11 @@ public class SettingActivity extends AppCompatActivity {
             public void onCheckedChanged(RadioGroup group, int checkedId) {
                 if(checkedId == R.id.radioBackgroundWhite) {
                     SharedPreferences.Editor editor = preferences.edit();
-                    editor.putInt("background", 0);
+                    editor.putInt(SETTING_BACKGROUND, 0);
                     editor.apply();
                 } else{
                     SharedPreferences.Editor editor = preferences.edit();
-                    editor.putInt("background", 1);
+                    editor.putInt(SETTING_BACKGROUND, 1);
                     editor.apply();
                 }
             }
@@ -76,15 +82,33 @@ public class SettingActivity extends AppCompatActivity {
             }
         });
 
+        // 検索対象
+        final CheckBox checkIncludeMp4 = findViewById(R.id.checkIncludeMp4);
+        checkIncludeMp4.setChecked(includeMp4 == 1);
+        checkIncludeMp4.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                SharedPreferences.Editor editor = preferences.edit();
+                if (checkIncludeMp4.isChecked()) {
+                    includeMp4 = 1;
+                } else {
+                    includeMp4 = 0;
+                }
+                editor.putInt(SETTING_INCLUDE_MP4, includeMp4);
+                editor.commit();
+                resultOk = 1;
+            }
+        });
+
         // 非表示クリア
         findViewById(R.id.buttonHideClear).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Set<String> hideFiles = new HashSet<>();
                 SharedPreferences.Editor editor = preferences.edit();
-                editor.putStringSet("hideFiles", hideFiles);
+                editor.putStringSet(SETTING_HIDE_FILES, hideFiles);
                 editor.commit();
-                hideClear = 1;
+                resultOk = 1;
                 Toast.makeText(SettingActivity.this, getString(R.string.setting_hide_clear_message), Toast.LENGTH_SHORT).show();
             }
         });
@@ -95,7 +119,7 @@ public class SettingActivity extends AppCompatActivity {
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if(keyCode == KeyEvent.KEYCODE_BACK){
             int result = RESULT_CANCELED;
-            if(hideClear == 1) {
+            if(resultOk == 1) {
                 result = RESULT_OK;
             }
             Intent intent = new Intent();

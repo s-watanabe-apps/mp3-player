@@ -29,7 +29,7 @@ public class SongListAdapter extends ArrayAdapter<SongItem> {
         this.resource = resource;
         this.items = items;
         this.inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        preferences = context.getSharedPreferences("preferences", Context.MODE_PRIVATE);
+        preferences = context.getSharedPreferences(SettingActivity.PREFERENCES_NAME, Context.MODE_PRIVATE);
     }
 
     @Override
@@ -42,7 +42,7 @@ public class SongListAdapter extends ArrayAdapter<SongItem> {
             view = inflater.inflate(resource, null);
         }
 
-        int background = preferences.getInt("background", 0);
+        int background = preferences.getInt(SettingActivity.SETTING_BACKGROUND, 0);
         int backgroundColor;
         int filenameColor;
         if(background == 0) {
@@ -81,7 +81,6 @@ public class SongListAdapter extends ArrayAdapter<SongItem> {
         // アイコン
         ImageView itemPlay = view.findViewById(R.id.item_play);
         if (item.getPlay() == 1) {
-            //itemPlay.setImageResource(R.drawable.play);
             itemPlay.setImageDrawable(context.getDrawable(R.drawable.play));
         } else {
             itemPlay.setImageDrawable(null);

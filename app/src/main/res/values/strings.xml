@@ -33,11 +33,12 @@
     <string name="setting_hide_clear_text">Restore the hidden files.</string>
     <string name="setting_hide_clear_button">Restore</string>
     <string name="setting_hide_clear_message">Restored the hidden files.</string>
+    <string name="setting_target_files_title">Target files.</string>
+    <string name="setting_include_mp4_text">also searches MP4 files.</string>
 
     <string name="mp3_volume_title">Volume</string>
     <string name="mp3_list_title">Song selections</string>
     <string name="mp3_play_list_prepare">Preparing playlist...</string>
-
 
     <string name="list_color_white_background">#FFFFFF</string>
     <string name="list_color_white_filename">#303F9F</string>

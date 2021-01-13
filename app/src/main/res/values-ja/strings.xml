@@ -33,6 +33,8 @@
     <string name="setting_hide_clear_text">非表示にしたファイルをもとに戻します。</string>
     <string name="setting_hide_clear_button">戻す</string>
     <string name="setting_hide_clear_message">非表示の設定を戻しました。</string>
+    <string name="setting_target_files_title">検索対象</string>
+    <string name="setting_include_mp4_text">MP4ファイルを含める。</string>
 
     <string name="mp3_volume_title">ボリューム設定</string>
     <string name="mp3_list_title">選曲リスト</string>

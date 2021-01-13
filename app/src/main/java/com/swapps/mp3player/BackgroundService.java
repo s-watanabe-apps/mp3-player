@@ -7,15 +7,17 @@ import android.content.SharedPreferences;
 import android.media.MediaPlayer;
 import android.os.Handler;
 import android.os.IBinder;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.widget.Toast;
 
 import java.io.File;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
 
 public class BackgroundService extends Service {
-    MediaPlayer mediaPlayer;
+    List<MediaPlayer> mediaPlayers;
     List<String> paths;
     List<String> names;
     int index;
@@ -25,7 +27,6 @@ public class BackgroundService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        mediaPlayer = new MediaPlayer();
     }
 
     public void registerHandler(Handler UpdateHandler) {
@@ -49,40 +50,10 @@ public class BackgroundService extends Service {
             names.add(new File(path).getName());
         }
 
-        try {
-            sendBroadCast(index);
-            mediaPlayer.setDataSource(paths.get(index));
-            mediaPlayer.prepare();
-        } catch (Exception e) {
-            Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_LONG).show();
-        }
+        sendBroadCast(index);
 
-        mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
-            @Override
-            public void onPrepared(MediaPlayer mediaPlayer) {
-                mediaPlayer.seekTo(0);
-                mediaPlayer.start();
-            }
-        });
-
-        mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener(){
-            @Override
-            public void onCompletion(MediaPlayer mp) {
-                if (++index > (paths.size() - 1)) {
-                    index = 0;
-                }
-                sendBroadCast(index);
-
-                try {
-                    mediaPlayer.stop();
-                    mediaPlayer.reset();
-                    mediaPlayer.setDataSource(paths.get(index));
-                    mediaPlayer.prepare();
-                } catch (Exception e) {
-                    Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_LONG).show();
-                }
-            }
-        });
+        mediaPlayers = new ArrayList<>();
+        setMediaPlayer(0);
 
         return startId;
     }
@@ -91,15 +62,63 @@ public class BackgroundService extends Service {
     public void onDestroy() {
         super.onDestroy();
 
-        if (mediaPlayer != null) {
-            mediaPlayer.stop();
-            mediaPlayer.release();
-            mediaPlayer = null;
+        for (MediaPlayer mediaPlayer : mediaPlayers) {
+            if (mediaPlayer != null) {
+                if (mediaPlayer.isPlaying()) {
+                    mediaPlayer.stop();
+                }
+
+                mediaPlayer.release();
+                mediaPlayer = null;
+            }
         }
     }
 
     @Override
     public IBinder onBind(Intent intent) {
         return null;
+    }
+
+    /**
+     * MediaPlayer
+     * @param i
+     */
+    private void setMediaPlayer(final int i) {
+        try {
+            mediaPlayers.add(new MediaPlayer());
+            mediaPlayers.get(i).setDataSource(paths.get(index));
+            mediaPlayers.get(i).prepare();
+        } catch (Exception e) {
+            Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_LONG).show();
+        }
+
+        mediaPlayers.get(i).setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+            @Override
+            public void onPrepared(MediaPlayer mediaPlayer) {
+                mediaPlayer.seekTo(0);
+                mediaPlayer.start();
+            }
+        });
+
+        mediaPlayers.get(i).setOnCompletionListener(new MediaPlayer.OnCompletionListener(){
+            @Override
+            public void onCompletion(MediaPlayer mp) {
+                if (++index > (paths.size() - 1)) {
+                    index = 0;
+                }
+                sendBroadCast(index);
+
+                try {
+                    mediaPlayers.get(i).release();
+                    mediaPlayers.set(i, null);
+
+                    mediaPlayers.add(new MediaPlayer());
+                    setMediaPlayer(i + 1);
+                } catch (Exception e) {
+                    Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_LONG).show();
+                }
+            }
+        });
+
     }
 }
