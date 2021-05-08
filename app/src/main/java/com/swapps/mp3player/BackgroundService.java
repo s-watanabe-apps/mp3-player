@@ -1,13 +1,22 @@
 package com.swapps.mp3player;
 
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
+import android.graphics.Color;
 import android.media.MediaPlayer;
+import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.provider.MediaStore;
+import android.support.annotation.RequiresApi;
+import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -23,6 +32,8 @@ public class BackgroundService extends Service {
     int index;
     private Handler handler;
     private BackgroundService context;
+    private static final int NOTIFICATION_ID = 10;
+    private int startId;
 
     @Override
     public void onCreate() {
@@ -44,6 +55,7 @@ public class BackgroundService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         paths = intent.getStringArrayListExtra("paths");
         index = 0;
+        this.startId = startId;
 
         names = new ArrayList<>();
         for (String path : paths) {
@@ -58,9 +70,22 @@ public class BackgroundService extends Service {
         return startId;
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
+    private String createNotificationChannel(String channelId, String channelName) {
+        NotificationChannel channel = new NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_NONE);
+        channel.setLightColor(Color.BLUE);
+        channel.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
+        NotificationManager service = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        service.createNotificationChannel(channel);
+        return channelId;
+    }
+
     @Override
     public void onDestroy() {
         super.onDestroy();
+
+        stopForeground(true);
+        stopSelf(startId);
 
         for (MediaPlayer mediaPlayer : mediaPlayers) {
             if (mediaPlayer != null) {
@@ -120,5 +145,20 @@ public class BackgroundService extends Service {
             }
         });
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Intent notificationIntent = new Intent(this, BackgroundService.class);
+            PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
+            Notification notification = new NotificationCompat.Builder(this,
+                    createNotificationChannel(getPackageName(), "MP3-Player Background Service"))
+                    .setOngoing(true)
+                    .setContentTitle(getString(R.string.app_name))
+                    .setContentText(new File(paths.get(index)).getName() + getString(R.string.running_message))
+                    .setSmallIcon(R.drawable.icon)
+                    .setContentIntent(pendingIntent)
+                    .setTicker("Title")
+                    .setPriority(Notification.PRIORITY_DEFAULT)
+                    .build();
+            startForeground(NOTIFICATION_ID, notification);
+        }
     }
 }

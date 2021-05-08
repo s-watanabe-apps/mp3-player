@@ -40,6 +40,8 @@
     <string name="mp3_list_title">選曲リスト</string>
     <string name="mp3_play_list_prepare">再生リストを準備中...</string>
 
+    <string name="running_message"> を再生中です。</string>
+
     <string name="list_color_white_background">#FFFFFF</string>
     <string name="list_color_white_filename">#303F9F</string>
     <string name="list_color_white_normal_text">#777777</string>
@@ -64,6 +66,6 @@
     <string name="json_color_black_element_bool">#636FCF</string>
     <string name="json_color_black_normal_text">#777777</string>
 
-    <string name="ad_unit_id">ca-app-pub-3940256099942544/6300978111</string>
-    <string name="interstitial_ad_unit_id">ca-app-pub-3940256099942544/1033173712</string>
+    <string name="ad_unit_id">ca-app-pub-4419472517747863/6346505635</string>
+    <string name="interstitial_ad_unit_id">ca-app-pub-4419472517747863/4339482910</string>
 </resources>
