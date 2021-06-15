@@ -1,5 +1,7 @@
 package com.swapps.mp3player;
 
+import android.app.Notification;
+import android.app.PendingIntent;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
@@ -8,6 +10,7 @@ import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
 import android.support.v7.app.AppCompatActivity;
@@ -75,6 +78,8 @@ public class Mp3Activity extends AppCompatActivity {
     }
 
     private void init() {
+        Log.d("test", "Mp3.init start");
+
         preferences = getSharedPreferences(SettingActivity.PREFERENCES_NAME, Context.MODE_PRIVATE);
         if(preferences.getInt(SettingActivity.SETTING_BACKGROUND, 0) == 0) {
             findViewById(R.id.layoutMp3).setBackgroundColor(Color.parseColor(getString(R.string.list_color_white_background)));
@@ -89,7 +94,11 @@ public class Mp3Activity extends AppCompatActivity {
         Intent intent = new Intent(getApplication(), BackgroundService.class);
         ArrayList<String> paths = getIntent().getStringArrayListExtra("paths");
         intent.putStringArrayListExtra("paths", paths);
-        startService(intent);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(intent);
+        } else {
+            startService(intent);
+        }
 
         updateReceiver = new UpdateReceiver();
         intentFilter = new IntentFilter();
@@ -131,12 +140,14 @@ public class Mp3Activity extends AppCompatActivity {
             String name = new File(path).getName();
             progressDialog.setMessage(name);
             item.setName(name);
-            item.setDuration(MediaUtils.getDuration(new File(path)));
+            item.setDuration(getDuration(new File(path)));
             listItems.add(item);
         }
         adapter = new SongListAdapter(this, R.layout.song_list_item, listItems);
         listView.setAdapter(adapter);
         adapter.notifyDataSetChanged();
+
+        Log.d("test", "Mp3.init end");
     }
 
 
@@ -145,6 +156,7 @@ public class Mp3Activity extends AppCompatActivity {
         super.onDestroy();
         Intent intent = new Intent(getApplication(), BackgroundService.class);
         stopService(intent);
+        unregisterReceiver(updateReceiver);
     }
 
     private Handler updateHandler = new Handler() {
