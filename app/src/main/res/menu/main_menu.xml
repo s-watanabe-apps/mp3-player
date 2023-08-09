@@ -6,12 +6,12 @@
         android:id="@+id/main_menu_orderby"
         android:orderInCategory="1"
         android:icon="@android:drawable/ic_menu_sort_by_size"
-        app:showAsAction="always"
-        android:title="Sort" />
+        app:showAsAction="ifRoom"
+        android:title="@string/sort" />
     <item
         android:id="@+id/main_menu_setting"
         android:orderInCategory="2"
         android:icon="@android:drawable/ic_menu_preferences"
         app:showAsAction="always"
-        android:title="Setting" />
+        android:title="@string/setting" />
 </menu>

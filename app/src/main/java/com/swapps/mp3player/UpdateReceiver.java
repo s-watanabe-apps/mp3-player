@@ -15,6 +15,7 @@ public class UpdateReceiver extends BroadcastReceiver {
     public void onReceive(Context context, Intent intent) {
 
         Bundle bundle = intent.getExtras();
+        assert bundle != null;
         int index = bundle.getInt("index");
 
         if(handler !=null){

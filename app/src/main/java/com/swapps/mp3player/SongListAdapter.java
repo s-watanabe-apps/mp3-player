@@ -3,6 +3,7 @@ package com.swapps.mp3player;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.support.annotation.NonNull;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -16,11 +17,11 @@ import java.text.SimpleDateFormat;
 import java.util.List;
 
 public class SongListAdapter extends ArrayAdapter<SongItem> {
-    private Context context;
-    private int resource;
-    private List<SongItem> items;
-    private LayoutInflater inflater;
-    private SharedPreferences preferences;
+    private final Context context;
+    private final int resource;
+    private final List<SongItem> items;
+    private final LayoutInflater inflater;
+    private final SharedPreferences preferences;
 
     public SongListAdapter(Context context, int resource, List<SongItem> items) {
         super(context, resource, items);
@@ -32,8 +33,9 @@ public class SongListAdapter extends ArrayAdapter<SongItem> {
         preferences = context.getSharedPreferences(SettingActivity.PREFERENCES_NAME, Context.MODE_PRIVATE);
     }
 
+    @NonNull
     @Override
-    public View getView(final int position, View convertView, ViewGroup parent) {
+    public View getView(final int position, View convertView, @NonNull ViewGroup parent) {
         View view;
 
         if (convertView != null) {
@@ -42,29 +44,13 @@ public class SongListAdapter extends ArrayAdapter<SongItem> {
             view = inflater.inflate(resource, null);
         }
 
-        int background = preferences.getInt(SettingActivity.SETTING_BACKGROUND, 0);
-        int backgroundColor;
-        int filenameColor;
-        if(background == 0) {
-            backgroundColor = Color.parseColor(context.getString(R.string.list_color_white_background));
-            filenameColor = Color.parseColor(context.getString(R.string.list_color_white_filename));
-        } else{
-            backgroundColor = Color.parseColor(context.getString(R.string.list_color_black_background));
-            filenameColor = Color.parseColor(context.getString(R.string.list_color_black_filename));
-        }
-
-        int sort = preferences.getInt("sort", 0);
-
-        LinearLayout layoutList = view.findViewById(R.id.layout_song_list);
-        layoutList.setBackgroundColor(backgroundColor);
-
         // リストビューに表示する要素を取得
         final SongItem item = items.get(position);
 
         // ファイル名
         TextView songName = view.findViewById(R.id.song_name);
         songName.setText(item.getName());
-        songName.setTextColor(filenameColor);
+        //songName.setTextColor(filenameColor);
 
         // 総再生時間
         TextView songDuration = view.findViewById(R.id.song_duration);
