@@ -4,8 +4,8 @@
     <string name="dialog_ok">OK</string>
     <string name="dialog_cancel">Cancel</string>
 
-    <string name="loading">読み込み中...</string>
-    <string name="search_json_file">音楽ファイル検索中...</string>
+    <string name="loading">読み込み中…</string>
+    <string name="search_json_file">音楽ファイル検索中…</string>
 
     <string name="permission_read_external_storage_title">ストレージへのアクセス権限について</string>
     <string name="permission_read_external_storage_body">このアプリはストレージからMP3ファイルを検索します。\nそのためストレージへのアクセス権限が必要です。</string>
@@ -32,9 +32,15 @@
     <string name="setting_target_files_title">検索対象</string>
     <string name="setting_include_mp4_text">MP4ファイルを含める。</string>
 
+    <string name="setting_cache_control">キャッシュ制御</string>
+    <string name="setting_cache_clear">キャッシュクリア</string>
+
+    <string name="setting_version_information">バージョン情報</string>
+    <string name="setting_version_description">mp3-player 2.1.1</string>
+
     <string name="mp3_volume_title">ボリューム設定</string>
     <string name="mp3_list_title">選曲リスト</string>
-    <string name="mp3_play_list_prepare">再生リストを準備中...</string>
+    <string name="mp3_play_list_prepare">再生リストを準備中…</string>
 
     <string name="running_message"> を再生中です。</string>
 

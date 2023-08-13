@@ -5,3 +5,5 @@
 caches/*
 daemon/*
 wrapper/*
+app/release/*
+
