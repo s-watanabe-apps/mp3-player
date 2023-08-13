@@ -1,40 +1,28 @@
 package com.swapps.mp3player;
 
-import android.app.Notification;
-import android.app.PendingIntent;
+import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.graphics.Color;
 import android.media.AudioManager;
-import android.media.MediaPlayer;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
-import android.widget.LinearLayout;
 import android.widget.ListView;
-import android.widget.RelativeLayout;
 import android.widget.SeekBar;
-import android.widget.TextView;
-import android.widget.Toast;
-import android.widget.VideoView;
-
 import java.io.File;
-import java.io.FileDescriptor;
-import java.io.FileInputStream;
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 
 import static com.swapps.mp3player.MediaUtils.getDuration;
+
+import androidx.appcompat.app.AppCompatActivity;
 
 public class Mp3Activity extends AppCompatActivity {
     private UpdateReceiver updateReceiver;
@@ -48,6 +36,40 @@ public class Mp3Activity extends AppCompatActivity {
     ProgressDialog progressDialog;
     Handler handler;
     Timer timer;
+
+    private final Handler updateHandler = new Handler() {
+        @Override
+        public void handleMessage(Message message) {
+            Bundle bundle = message.getData();
+            final int index = (Integer) bundle.get("index");
+            for (int i = 0; i < listItems.size(); i++) {
+                if (i == index) {
+                    listItems.get(i).setNow(0);
+                    listItems.get(i).setPlay(1);
+                } else {
+                    listItems.get(i).setNow(0);
+                    listItems.get(i).setPlay(0);
+                }
+            }
+
+            if (timer != null) {
+                timer.cancel();
+                timer = null;
+            }
+            timer = new Timer();
+            timer.scheduleAtFixedRate(new TimerTask() {
+                @Override
+                public void run() {
+                    handler.post(() -> {
+                        listItems.get(index).setNow(listItems.get(index).getNow() + 1);
+                        adapter.notifyDataSetChanged();
+                    });
+                }
+            },1000,1000);
+
+            adapter.notifyDataSetChanged();
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,19 +91,18 @@ public class Mp3Activity extends AppCompatActivity {
 
     }
 
+    /**
+     * 画面初期化処理
+     */
     private void init() {
-        Log.d("test", "Mp3.init start");
+        //Log.d("test", "Mp3.init start");
 
         preferences = getSharedPreferences(SettingActivity.PREFERENCES_NAME, Context.MODE_PRIVATE);
 
         Intent intent = new Intent(getApplication(), BackgroundService.class);
         ArrayList<String> paths = getIntent().getStringArrayListExtra("paths");
         intent.putStringArrayListExtra("paths", paths);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(intent);
-        } else {
-            startService(intent);
-        }
+        startForegroundService(intent);
 
         updateReceiver = new UpdateReceiver();
         intentFilter = new IntentFilter();
@@ -118,6 +139,7 @@ public class Mp3Activity extends AppCompatActivity {
 
         listView = findViewById(R.id.song_list_view);
         listItems = new ArrayList<>();
+        assert paths != null;
         for (String path : paths) {
             SongItem item = new SongItem();
             String name = new File(path).getName();
@@ -130,7 +152,7 @@ public class Mp3Activity extends AppCompatActivity {
         listView.setAdapter(adapter);
         adapter.notifyDataSetChanged();
 
-        Log.d("test", "Mp3.init end");
+        //Log.d("test", "Mp3.init end");
     }
 
 
@@ -141,38 +163,4 @@ public class Mp3Activity extends AppCompatActivity {
         stopService(intent);
         unregisterReceiver(updateReceiver);
     }
-
-    private final Handler updateHandler = new Handler() {
-        @Override
-        public void handleMessage(Message message) {
-            Bundle bundle = message.getData();
-            final int index = (Integer) bundle.get("index");
-            for (int i = 0; i < listItems.size(); i++) {
-                if (i == index) {
-                    listItems.get(i).setNow(0);
-                    listItems.get(i).setPlay(1);
-                } else {
-                    listItems.get(i).setNow(0);
-                    listItems.get(i).setPlay(0);
-                }
-            }
-
-            if (timer != null) {
-                timer.cancel();
-                timer = null;
-            }
-            timer = new Timer();
-            timer.scheduleAtFixedRate(new TimerTask() {
-                @Override
-                public void run() {
-                handler.post(() -> {
-                    listItems.get(index).setNow(listItems.get(index).getNow() + 1);
-                    adapter.notifyDataSetChanged();
-                });
-                }
-            },1000,1000);
-
-            adapter.notifyDataSetChanged();
-        }
-    };
 }

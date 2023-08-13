@@ -8,6 +8,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseExpandableListAdapter;
 import android.widget.CheckBox;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -129,6 +130,10 @@ public class ExpandableListAdapter extends BaseExpandableListAdapter {
 
         String key = getKey(groupPosition);
 
+        // アイコン
+        ImageView icon = convertView.findViewById(R.id.dir_icon);
+        icon.setImageResource(isExpanded ? R.drawable.dir_open : R.drawable.dir_close);
+
         // ディレクトリ名
         TextView viewDirName = convertView.findViewById(R.id.dir_name);
         String[] array = key.split("/");
@@ -136,7 +141,7 @@ public class ExpandableListAdapter extends BaseExpandableListAdapter {
 
         // ディレクトリパス
         TextView viewDirPath = convertView.findViewById(R.id.dir_path);
-        viewDirPath.setText(key);
+        viewDirPath.setText(key.substring(0, key.lastIndexOf("/") + 1));
 
         // グループチェックボックス
         CheckBox dirCheck = convertView.findViewById(R.id.dir_check);
@@ -192,7 +197,7 @@ public class ExpandableListAdapter extends BaseExpandableListAdapter {
 
         itemCheck.setOnClickListener(v -> {
             boolean checked = ((CheckBox) v).isChecked();
-            items.get(getKey(groupPosition)).get(childPosition).setChecked(checked);
+            Objects.requireNonNull(items.get(getKey(groupPosition))).get(childPosition).setChecked(checked);
             listener.updateRequest();
         });
 

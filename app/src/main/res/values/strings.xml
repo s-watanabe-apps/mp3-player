@@ -4,8 +4,8 @@
     <string name="dialog_ok">OK</string>
     <string name="dialog_cancel">Cancel</string>
 
-    <string name="loading">Loading...</string>
-    <string name="search_json_file">Searching for Music files...</string>
+    <string name="loading">Loading…</string>
+    <string name="search_json_file">Searching for Music files…</string>
 
     <string name="permission_read_external_storage_title">About access authority to the store</string>
     <string name="permission_read_external_storage_body">This application will search MP3 files from storage.\nTherefore, you need access to storage.</string>
@@ -32,9 +32,15 @@
     <string name="setting_target_files_title">Target files.</string>
     <string name="setting_include_mp4_text">also searches MP4 files.</string>
 
+    <string name="setting_cache_control">Cache control.</string>
+    <string name="setting_cache_clear">Clear Cache</string>
+
+    <string name="setting_version_information">Version information.</string>
+    <string name="setting_version_description">mp3-player 2.1.1</string>
+
     <string name="mp3_volume_title">Volume</string>
     <string name="mp3_list_title">Song selections</string>
-    <string name="mp3_play_list_prepare">Preparing playlist...</string>
+    <string name="mp3_play_list_prepare">Preparing playlist…</string>
 
     <string name="running_message"> is playing.</string>
 
@@ -43,5 +49,4 @@
 
     <string name="ad_unit_id">ca-app-pub-3940256099942544/6300978111</string>
     <string name="interstitial_ad_unit_id">ca-app-pub-3940256099942544/1033173712</string>
-
 </resources>

@@ -1,20 +1,20 @@
 package com.swapps.mp3player;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.KeyEvent;
-import android.view.View;
+import android.widget.Button;
 import android.widget.CheckBox;
-import android.widget.ImageView;
-import android.widget.RadioButton;
-import android.widget.RadioGroup;
-import android.widget.Toast;
+import android.widget.TextView;
 
-import java.util.HashSet;
-import java.util.Set;
+import androidx.appcompat.app.AppCompatActivity;
+
+import java.io.File;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class SettingActivity extends AppCompatActivity {
 
@@ -46,6 +46,26 @@ public class SettingActivity extends AppCompatActivity {
             editor.apply();
             resultOk = 1;
         });
+
+        // キャッシュ制御
+        final TextView textClearCache = findViewById(R.id.textClearCache);
+        final File file = new File(getFilesDir(), MainActivity.CACHE_FILE_NAME);
+        if (file.exists()) {
+            SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            textClearCache.setText(file.getName() + "\n" + format.format(new Date(file.lastModified())));
+        }
+        Button buttonClearCache = findViewById(R.id.buttonClearCache);
+        buttonClearCache.setOnClickListener(v -> {
+            try {
+                file.delete();
+                textClearCache.setText("---");
+                resultOk = 1;
+            } catch(Exception ignored) {
+                //
+            }
+        });
+
+
     }
 
     @Override
