@@ -1,32 +1,38 @@
 package com.swapps.mp3player;
 
 import android.Manifest;
+import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
 import android.os.Environment;
 import android.os.Handler;
-import android.support.annotation.NonNull;
-import android.support.v7.app.AlertDialog;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.ExpandableListView;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.android.gms.ads.AdListener;
+import com.google.android.gms.ads.AdError;
 import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.AdView;
-import com.google.android.gms.ads.InterstitialAd;
+import com.google.android.gms.ads.FullScreenContentCallback;
+import com.google.android.gms.ads.LoadAdError;
+import com.google.android.gms.ads.MobileAds;
+import com.google.android.gms.ads.initialization.InitializationStatus;
+import com.google.android.gms.ads.initialization.OnInitializationCompleteListener;
+import com.google.android.gms.ads.interstitial.InterstitialAd;
+import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback;
 import com.swapps.mp3player.comparator.DateComparator;
 import com.swapps.mp3player.comparator.NameComparator;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -69,52 +75,13 @@ public class MainActivity extends AppCompatActivity implements AdapterInterface 
     SharedPreferences preferences;
     List<String> extensions;
 
+    // 広告リクエスト
+    AdRequest adRequest;
+
     // 全面広告
     private InterstitialAd interstitialAd;
     public static int AD_LOAD_TIMEOUT = 30;
     private int adLoadCount = 0;
-
-    private void showInterstitial() {
-        if(interstitialAd != null && interstitialAd.isLoaded()) {
-            interstitialAd.show();
-        } else{
-            goToNextLevel();
-        }
-    }
-
-    private void loadInterstitial() {
-        AdRequest adRequest = new AdRequest.Builder().setRequestAgent("android_studio:ad_template").build();
-        interstitialAd.loadAd(adRequest);
-    }
-
-    private void goToNextLevel() {
-        interstitialAd = newInterstitialAd();
-        loadInterstitial();
-    }
-
-    private InterstitialAd newInterstitialAd() {
-        InterstitialAd interstitialAd = new InterstitialAd(this);
-        interstitialAd.setAdUnitId(getString(R.string.interstitial_ad_unit_id));
-        interstitialAd.setAdListener(new AdListener() {
-            @Override
-            public void onAdLoaded() {
-                //Log.d(getClass().getName(), "onAdLoaded()");
-            }
-
-            @Override
-            public void onAdFailedToLoad(int errorCode) {
-                //Log.d(getClass().getName(), "onAdFailedToLoad(" + errorCode + ")");
-            }
-
-            @Override
-            public void onAdClosed() {
-                //Log.d(getClass().getName(), "onAdClosed()");
-                goToNextLevel();
-            }
-        });
-
-        return interstitialAd;
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -122,7 +89,7 @@ public class MainActivity extends AppCompatActivity implements AdapterInterface 
         setContentView(R.layout.activity_main);
 
         AdView adView = findViewById(R.id.adView);
-        AdRequest adRequest = new AdRequest.Builder().build();
+        adRequest = new AdRequest.Builder().build();
         adView.loadAd(adRequest);
 
         checkPermission();
@@ -163,16 +130,77 @@ public class MainActivity extends AppCompatActivity implements AdapterInterface 
             }
         }
     }
-    
+
+    /**
+     * 全面広告表示処理
+     */
+    private void showInterstitialAd() {
+        interstitialAd.setFullScreenContentCallback(new FullScreenContentCallback(){
+            @Override
+            public void onAdClicked() {
+                // Called when a click is recorded for an ad.
+                //Log.d("ad-test", "Ad was clicked.");
+            }
+
+            @Override
+            public void onAdDismissedFullScreenContent() {
+                // Called when ad is dismissed.
+                // Set the ad reference to null so you don't show the ad a second time.
+                //Log.d("ad-test", "Ad dismissed fullscreen content.");
+                interstitialAd = null;
+            }
+
+            @Override
+            public void onAdFailedToShowFullScreenContent(@NonNull AdError adError) {
+                // Called when ad fails to show.
+                //Log.e("ad-test", "Ad failed to show fullscreen content.");
+                interstitialAd = null;
+            }
+
+            @Override
+            public void onAdImpression() {
+                // Called when an impression is recorded for an ad.
+                //Log.d("ad-test", "Ad recorded an impression.");
+            }
+
+            @Override
+            public void onAdShowedFullScreenContent() {
+                // Called when ad is shown.
+                //Log.d("ad-test", "Ad showed fullscreen content.");
+            }
+        });
+
+        interstitialAd.show(MainActivity.this);
+    }
+
     /**
      * 画面初期化処理
      */
     private void init() {
         preferences = getSharedPreferences(SettingActivity.PREFERENCES_NAME, Context.MODE_PRIVATE);
 
+        // 全面広告
+        MobileAds.initialize(this, initializationStatus -> {});
         interstitialAd = null;
-        interstitialAd = newInterstitialAd();
-        loadInterstitial();
+        String interstitialAdUnitId = getString(R.string.interstitial_ad_unit_id);
+        InterstitialAd.load(this, interstitialAdUnitId, adRequest,
+                new InterstitialAdLoadCallback() {
+                @Override
+                public void onAdLoaded(@NonNull InterstitialAd interstitialAd) {
+                    // The mInterstitialAd reference will be null until
+                    // an ad is loaded.
+                    MainActivity.this.interstitialAd = interstitialAd;
+                    //Log.i("ad-test", "onAdLoaded");
+                }
+
+                @Override
+                public void onAdFailedToLoad(@NonNull LoadAdError loadAdError) {
+                    // Handle the error
+                    //Log.d("ad-test", loadAdError.toString());
+                    interstitialAd = null;
+                }
+            }
+        );
 
         // 検索対象
         extensions = new ArrayList<>();
@@ -181,14 +209,8 @@ public class MainActivity extends AppCompatActivity implements AdapterInterface 
             extensions.add("mp4");
         }
 
+        // リストビュー初期化
         listView = findViewById(R.id.list_view);
-
-        listView.setOnGroupClickListener((parent, v, groupPosition,  id) -> {
-            //Log.d("test", "isChildSelectable:" + parent.getExpandableListAdapter().isChildSelectable(groupPosition, 0));
-
-            return false;
-        });
-
         listView.setOnChildClickListener((parent, v, groupPosition, childPosition, id) -> {
             ArrayList<String> paths = new ArrayList<>();
             for(List<Item> items : mapItems.values()) {
@@ -210,6 +232,7 @@ public class MainActivity extends AppCompatActivity implements AdapterInterface 
             return false;
         });
 
+        // プログレスダイアログ初期化
         progressDialog = new ProgressDialog(MainActivity.this);
         progressDialog.setTitle(getString(R.string.search_json_file));
         progressDialog.setMessage(getString(R.string.loading));
@@ -229,14 +252,14 @@ public class MainActivity extends AppCompatActivity implements AdapterInterface 
                 @Override
                 public void run() {
                     handler.post(() -> {
-                        if((interstitialAd != null && interstitialAd.isLoaded()) || adLoadCount >= AD_LOAD_TIMEOUT) {
+                        if((interstitialAd != null) || adLoadCount >= AD_LOAD_TIMEOUT) {
                             // 準備OK
                             timer.cancel();
                             progressDialog.dismiss();
                             if(interstitialAd != null) {
                                 int count = preferences.getInt("count", 0);
                                 if (count % 3 == 1) {
-                                    showInterstitial();
+                                    showInterstitialAd();
                                 }
                                 SharedPreferences.Editor editor = preferences.edit();
                                 count++;
@@ -279,6 +302,8 @@ public class MainActivity extends AppCompatActivity implements AdapterInterface 
 
         // 出力結果をリストビューに表示
         handler.post(this::setListView);
+
+        if (progressDialog.isShowing()) progressDialog.setMessage(getString(R.string.loading));
     }
 
     /**
@@ -312,7 +337,7 @@ public class MainActivity extends AppCompatActivity implements AdapterInterface 
 
                 if (pos != -1) {
                     String fileExtensions = subFile.getName().substring(pos + 1).toLowerCase();
-                    Log.d("test", "file:" + subFile.getName() + " -> " + fileExtensions);
+                    //Log.d("test", "file:" + subFile.getName() + " -> " + fileExtensions);
                     if(subFile.getName().charAt(0) != '.'
                             && extensions.contains(fileExtensions)) {
                         Item item = new Item();
@@ -336,13 +361,7 @@ public class MainActivity extends AppCompatActivity implements AdapterInterface 
      */
     public Date getCreatedAt(String path) {
         try {
-            BasicFileAttributes basicAttr;
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                basicAttr = Files.readAttributes(Paths.get(path), BasicFileAttributes.class);
-            } else {
-                return null;
-            }
-
+            BasicFileAttributes basicAttr = Files.readAttributes(Paths.get(path), BasicFileAttributes.class);
             return new Date(basicAttr.creationTime().toMillis());
         } catch(Exception e) {
             return null;
@@ -454,21 +473,17 @@ public class MainActivity extends AppCompatActivity implements AdapterInterface 
                 return null;
             }
 
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                Path path = Paths.get(file.getPath());
-                FileTime fileTime = Files.getLastModifiedTime(path);
-                Date now = new Date();
+            Path path = Paths.get(file.getPath());
+            FileTime fileTime = Files.getLastModifiedTime(path);
+            Date now = new Date();
 
-                //SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                //Log.d("test", "now:" + format.format(now));
-                //Log.d("test", "fileTime:" + format.format(new Date(fileTime.toMillis())));
+            //SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            //Log.d("test", "now:" + format.format(now));
+            //Log.d("test", "fileTime:" + format.format(new Date(fileTime.toMillis())));
 
-                long diff = (now.getTime() - fileTime.toMillis()) / 1000;
-                //Log.d("test", "diff:" + diff);
-                if (diff > (60 * 60 * 24)) {
-                    return null;
-                }
-            } else {
+            long diff = (now.getTime() - fileTime.toMillis()) / 1000;
+            //Log.d("test", "diff:" + diff);
+            if (diff > (60 * 60 * 24)) {
                 return null;
             }
 

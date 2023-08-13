@@ -7,21 +7,15 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
-import android.content.pm.PackageInfo;
 import android.graphics.Color;
 import android.media.MediaPlayer;
-import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
-import android.provider.MediaStore;
-import android.support.annotation.RequiresApi;
-import android.support.v4.app.NotificationCompat;
-import android.util.Log;
 import android.widget.Toast;
 
+import androidx.core.app.NotificationCompat;
+
 import java.io.File;
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -70,7 +64,6 @@ public class BackgroundService extends Service {
         return startId;
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     private String createNotificationChannel(String channelId, String channelName) {
         NotificationChannel channel = new NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_NONE);
         channel.setLightColor(Color.BLUE);
@@ -138,20 +131,18 @@ public class BackgroundService extends Service {
             }
         });
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            Intent notificationIntent = new Intent(this, BackgroundService.class);
-            PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
-            Notification notification = new NotificationCompat.Builder(this,
-                    createNotificationChannel(getPackageName(), "MP3-Player Background Service"))
-                    .setOngoing(true)
-                    .setContentTitle(getString(R.string.app_name))
-                    .setContentText(new File(paths.get(index)).getName() + getString(R.string.running_message))
-                    .setSmallIcon(R.drawable.icon)
-                    .setContentIntent(pendingIntent)
-                    .setTicker("Title")
-                    .setPriority(Notification.PRIORITY_DEFAULT)
-                    .build();
-            startForeground(NOTIFICATION_ID, notification);
-        }
+        Intent notificationIntent = new Intent(this, BackgroundService.class);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
+        Notification notification = new NotificationCompat.Builder(this,
+                createNotificationChannel(getPackageName(), "MP3-Player Background Service"))
+                .setOngoing(true)
+                .setContentTitle(getString(R.string.app_name))
+                .setContentText(new File(paths.get(index)).getName() + getString(R.string.running_message))
+                .setSmallIcon(R.drawable.icon)
+                .setContentIntent(pendingIntent)
+                .setTicker("Title")
+                .setPriority(Notification.PRIORITY_DEFAULT)
+                .build();
+        startForeground(NOTIFICATION_ID, notification);
     }
 }

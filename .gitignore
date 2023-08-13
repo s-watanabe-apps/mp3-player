@@ -1,0 +1,7 @@
+.idea/*
+.gradle/*
+.gradle/*
+.idea/*
+caches/*
+daemon/*
+wrapper/*
