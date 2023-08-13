@@ -12,6 +12,10 @@ public class DateComparator implements Comparator {
         Item item1 = (Item) object1;
         Item item2 = (Item) object2;
 
+        if (item1 == null || item2 == null) {
+            return 0;
+        }
+
         if(item1.getLastModified().before(item2.getLastModified())){
             return 1;
         }else if(item2.getLastModified().before(item1.getLastModified())){

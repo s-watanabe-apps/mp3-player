@@ -1,7 +1,5 @@
 package com.swapps.mp3player;
 
-import java.util.Date;
-
 public class SongItem {
     private String name;
     private int now;

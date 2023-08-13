@@ -3,7 +3,6 @@ package com.swapps.mp3player;
 import android.Manifest;
 import android.app.ProgressDialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -11,69 +10,63 @@ import android.graphics.Color;
 import android.os.Environment;
 import android.os.Handler;
 import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Base64;
 import android.util.Log;
-import android.view.ContextMenu;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
-import android.widget.AdapterView;
-import android.widget.CheckBox;
-import android.widget.EditText;
-import android.widget.LinearLayout;
-import android.widget.ListView;
-import android.widget.TextView;
-import android.widget.Toast;
+import android.widget.ExpandableListView;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.android.gms.ads.AdListener;
 import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.AdView;
 import com.google.android.gms.ads.InterstitialAd;
 import com.swapps.mp3player.comparator.DateComparator;
-import com.swapps.mp3player.comparator.DirectoryComparator;
-import com.swapps.mp3player.comparator.SizeComparator;
+import com.swapps.mp3player.comparator.NameComparator;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.lang.reflect.Array;
-import java.nio.channels.FileChannel;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
-import java.util.HashSet;
-import java.util.Iterator;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Timer;
 import java.util.TimerTask;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements AdapterInterface {
 
     public static final int REQUEST_PERMISSION_EXTERNAL_STORAGE = 1;
     public static final int REQUEST_CODE_SETTING = 2;
     public static final int REQUEST_CODE_MP3 = 3;
-    public static final String tag ="debug";
+    public static final String CACHE_FILE_NAME = "cache.json";
 
-    private static String[] PERMISSIONS_STORAGE = {
+    private static final String[] PERMISSIONS_STORAGE = {
             Manifest.permission.READ_EXTERNAL_STORAGE,
             Manifest.permission.WRITE_EXTERNAL_STORAGE
     };
 
     ProgressDialog progressDialog;
     Handler handler;
-    ListView listView;
-    List<Item> listItems;
-    ListAdapter adapter;
+    ExpandableListView listView;
+    Map<String, List<Item>> mapItems;
+    ExpandableListAdapter adapter;
     SharedPreferences preferences;
-    Set<String> hideFiles;
     List<String> extensions;
 
     // 全面広告
@@ -101,7 +94,6 @@ public class MainActivity extends AppCompatActivity {
 
     private InterstitialAd newInterstitialAd() {
         InterstitialAd interstitialAd = new InterstitialAd(this);
-
         interstitialAd.setAdUnitId(getString(R.string.interstitial_ad_unit_id));
         interstitialAd.setAdListener(new AdListener() {
             @Override
@@ -129,12 +121,15 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        AdView adView = findViewById(R.id.adView);
+        AdRequest adRequest = new AdRequest.Builder().build();
+        adView.loadAd(adRequest);
+
         checkPermission();
     }
 
     /**
      * 権限確認
-     * @return void
      */
     public void checkPermission() {
         if(checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
@@ -142,18 +137,8 @@ public class MainActivity extends AppCompatActivity {
                     .setTitle(getString(R.string.permission_read_external_storage_title))
                     .setMessage(getString(R.string.permission_read_external_storage_body))
                     .setCancelable(false)
-                    .setNegativeButton(getString(R.string.dialog_cancel), new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            finish();
-                        }
-                    })
-                    .setPositiveButton(getString(R.string.dialog_ok), new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            requestPermissions(PERMISSIONS_STORAGE, REQUEST_PERMISSION_EXTERNAL_STORAGE);
-                        }
-                    })
+                    .setNegativeButton(getString(R.string.dialog_cancel), (dialog, which) -> finish())
+                    .setPositiveButton(getString(R.string.dialog_ok), (dialog, which) -> requestPermissions(PERMISSIONS_STORAGE, REQUEST_PERMISSION_EXTERNAL_STORAGE))
                     .show();
         } else{
             init();
@@ -162,48 +147,32 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * パーミッション設定イベント
-     * @param requestCode
-     * @param permissions
-     * @param grantResults
      */
     @Override
-    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+    public void onRequestPermissionsResult(
+            int requestCode,
+            @NonNull String[] permissions,
+            @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
-        switch(requestCode) {
-            case REQUEST_PERMISSION_EXTERNAL_STORAGE:
-                if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    init();
-                } else{
-                    //Toast.makeText(this, getString(R.string.permission_no_granted_message), Toast.LENGTH_SHORT).show();
-                    finish();
-                }
-                break;
-            default:
-                break;
+        if (requestCode == REQUEST_PERMISSION_EXTERNAL_STORAGE) {
+            if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                init();
+            } else {
+                finish();
+            }
         }
     }
-
-
+    
     /**
      * 画面初期化処理
-     * @return void
      */
     private void init() {
         preferences = getSharedPreferences(SettingActivity.PREFERENCES_NAME, Context.MODE_PRIVATE);
 
-        AdView adView = findViewById(R.id.adView);
-        AdRequest adRequest = new AdRequest.Builder().build();
-        adView.loadAd(adRequest);
-
         interstitialAd = null;
         interstitialAd = newInterstitialAd();
         loadInterstitial();
-
-        // 非表示ファイルのロード
-        Set<String> oldHideFiles = preferences.getStringSet(SettingActivity.SETTING_HIDE_FILES,  new HashSet<String>());
-        hideFiles = new HashSet<>();
-        hideFiles.addAll(oldHideFiles);
 
         // 検索対象
         extensions = new ArrayList<>();
@@ -213,76 +182,78 @@ public class MainActivity extends AppCompatActivity {
         }
 
         listView = findViewById(R.id.list_view);
-        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            public void onItemClick(AdapterView<?> parent, View view, int pos, long id) {
-                ArrayList<String> paths = new ArrayList<>();
-                for (Item item : listItems) {
+
+        listView.setOnGroupClickListener((parent, v, groupPosition,  id) -> {
+            //Log.d("test", "isChildSelectable:" + parent.getExpandableListAdapter().isChildSelectable(groupPosition, 0));
+
+            return false;
+        });
+
+        listView.setOnChildClickListener((parent, v, groupPosition, childPosition, id) -> {
+            ArrayList<String> paths = new ArrayList<>();
+            for(List<Item> items : mapItems.values()) {
+                for(Item item : items) {
                     if (item.isChecked()) {
                         paths.add(item.getPath() + "/" + item.getName());
                     }
                 }
-                if (paths.size() == 0) {
-                    paths.add(listItems.get(pos).getPath() + "/" + listItems.get(pos).getName());
-                }
-                Intent intent = new Intent(MainActivity.this, Mp3Activity.class);
-                intent.putStringArrayListExtra("paths", paths);
-                startActivityForResult(intent, REQUEST_CODE_MP3);
             }
+
+            if (paths.size() == 0) {
+                Item item = (Item) adapter.getChild(groupPosition, childPosition);
+                paths.add(item.getPath() + "/" + item.getName());
+            }
+            Intent intent = new Intent(MainActivity.this, Mp3Activity.class);
+            intent.putStringArrayListExtra("paths", paths);
+            startActivityForResult(intent, REQUEST_CODE_MP3);
+
+            return false;
         });
 
         progressDialog = new ProgressDialog(MainActivity.this);
         progressDialog.setTitle(getString(R.string.search_json_file));
-        progressDialog.setMessage("---");
+        progressDialog.setMessage(getString(R.string.loading));
         progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
         progressDialog.setCancelable(false);
         progressDialog.show();
 
         handler = new Handler();
 
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                //int storage = preferences.getInt("storage", 0);
-                //Log.d(TAG, "storage:" + storage);
+        new Thread(() -> {
+            // 内部ストレージ
+            String path = Environment.getExternalStorageDirectory().getPath();
+            searchFiles(path);
 
-                // 内部ストレージ
-                String path = Environment.getExternalStorageDirectory().getPath();
-                searchFiles(path);
-
-                final Timer timer = new Timer();
-                timer.scheduleAtFixedRate(new TimerTask() {
-                    @Override
-                    public void run() {
-                        handler.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                if((interstitialAd != null && interstitialAd.isLoaded()) || adLoadCount >= AD_LOAD_TIMEOUT) {
-                                    // 準備OK
-                                    timer.cancel();
-                                    progressDialog.dismiss();
-                                    if(interstitialAd != null) {
-                                        int count = preferences.getInt("count", 0);
-                                        if (count % 3 == 1) {
-                                            showInterstitial();
-                                        }
-                                        SharedPreferences.Editor editor = preferences.edit();
-                                        count++;
-                                        editor.putInt("count", count);
-                                        editor.commit();
-                                    }
-                                } else{
-                                    // ロード中
-                                    adLoadCount++;
-                                    Log.d(tag, "ad_load:" + adLoadCount);
-                                    if(adLoadCount >= AD_LOAD_TIMEOUT){
-                                        interstitialAd = null;
-                                    }
+            final Timer timer = new Timer();
+            timer.scheduleAtFixedRate(new TimerTask() {
+                @Override
+                public void run() {
+                    handler.post(() -> {
+                        if((interstitialAd != null && interstitialAd.isLoaded()) || adLoadCount >= AD_LOAD_TIMEOUT) {
+                            // 準備OK
+                            timer.cancel();
+                            progressDialog.dismiss();
+                            if(interstitialAd != null) {
+                                int count = preferences.getInt("count", 0);
+                                if (count % 3 == 1) {
+                                    showInterstitial();
                                 }
+                                SharedPreferences.Editor editor = preferences.edit();
+                                count++;
+                                editor.putInt("count", count);
+                                editor.apply();
                             }
-                        });
-                    }
-                },0,500);
-            }
+                        } else{
+                            // ロード中
+                            adLoadCount++;
+                            //Log.d("debug", "ad_load:" + adLoadCount);
+                            if(adLoadCount >= AD_LOAD_TIMEOUT){
+                                interstitialAd = null;
+                            }
+                        }
+                    });
+                }
+            },0,500);
         }).start();
     }
 
@@ -291,29 +262,31 @@ public class MainActivity extends AppCompatActivity {
      * @param path 検索する場所
      */
     private void searchFiles(String path) {
-        listItems = searchTargetFiles(path);
+        if ((mapItems = readCache()) == null) {
+            List<Item> listItems = searchTargetFiles(path);
+
+            mapItems = new HashMap<>();
+
+            for (Item item : listItems) {
+                if (!mapItems.containsKey(item.getPath())) {
+                    mapItems.put(item.getPath(), new ArrayList<>());
+                }
+                Objects.requireNonNull(mapItems.get(item.getPath())).add(item);
+            }
+
+            writeCache(mapItems);
+        }
 
         // 出力結果をリストビューに表示
-        handler.post(new Runnable() {
-            @Override
-            public void run() {
-                setListView();
-            }
-        });
+        handler.post(this::setListView);
     }
 
     /**
      * 対象ファイル検索
      * @param path 検索する場所
-     * @return
      */
-    private List<Item> searchTargetFiles(final String path){
-        handler.post(new Runnable() {
-            @Override
-            public void run() {
-                progressDialog.setMessage(path);
-            }
-        });
+    private List<Item> searchTargetFiles(final String path) {
+        handler.post(() -> progressDialog.setMessage(path));
 
         List<Item> listItems = new ArrayList<>();
         final File directory = new File(path);
@@ -324,6 +297,7 @@ public class MainActivity extends AppCompatActivity {
         // java.io.File クラスのメソッド list()
         // 指定したディレクトリに含まれるファイル、ディレクトリの一覧を String 型の配列で返す。
         String[] files = directory.list();
+        assert files != null;
         for (String fileName : files){
 
             File subFile;
@@ -334,21 +308,18 @@ public class MainActivity extends AppCompatActivity {
                 listItems.addAll(searchTargetFiles(subFile.getPath()));
                 //listDirectory.add(directory.getPath() + "/" + fileName[n]);
             } else{
-                // 非表示に設定されたファイル
-                if (hideFiles.contains(subFile.getPath())) {
-                    continue;
-                }
-                //Log.d(TAG, "file:" + subFile.getName());
                 int pos = subFile.getName().lastIndexOf(".");
+
                 if (pos != -1) {
                     String fileExtensions = subFile.getName().substring(pos + 1).toLowerCase();
-                    if(!subFile.getName().substring(0, 1).equals(".")
-                            && extensions.indexOf(fileExtensions) >= 0) {
+                    Log.d("test", "file:" + subFile.getName() + " -> " + fileExtensions);
+                    if(subFile.getName().charAt(0) != '.'
+                            && extensions.contains(fileExtensions)) {
                         Item item = new Item();
                         item.setName(subFile.getName());
                         item.setPath(subFile.getParent());
                         item.setSize(MediaUtils.getDuration(subFile));
-                        item.setLastModified(new Date(subFile.lastModified()));
+                        item.setLastModified(getCreatedAt(subFile.getPath()));
                         listItems.add(item);
                     }
                 }
@@ -358,37 +329,43 @@ public class MainActivity extends AppCompatActivity {
         return listItems;
     }
 
-    public void setListView() {
-        clearListView();
+    /**
+     * ファイルの作成日時.
+     * @param path 対象ファイルパス
+     * @return Date
+     */
+    public Date getCreatedAt(String path) {
+        try {
+            BasicFileAttributes basicAttr;
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                basicAttr = Files.readAttributes(Paths.get(path), BasicFileAttributes.class);
+            } else {
+                return null;
+            }
 
-        if(preferences.getInt(SettingActivity.SETTING_BACKGROUND, 0) == 0) {
-            listView.setBackgroundColor(Color.parseColor(getString(R.string.list_color_white_background)));
-        } else{
-            listView.setBackgroundColor(Color.parseColor(getString(R.string.list_color_black_background)));
+            return new Date(basicAttr.creationTime().toMillis());
+        } catch(Exception e) {
+            return null;
         }
-
-        int sort = preferences.getInt("sort", 0);
-        if(sort == 1) {
-            Collections.sort(listItems, new SizeComparator());
-        } else if(sort == 2) {
-            Collections.sort(listItems, new DateComparator());
-        } else{
-            Collections.sort(listItems, new DirectoryComparator());
-        }
-
-        //for (int i = 0; i < listItems.size(); i++) {
-        //    Log.d("wata", "name:" + listItems.get(i).getName());
-        //}
-
-        adapter = new ListAdapter(MainActivity.this, R.layout.list_item, listItems);
-        listView.setAdapter(adapter);
-        registerForContextMenu(listView);
     }
 
-    public void clearListView() {
-        adapter = new ListAdapter(MainActivity.this, R.layout.list_item, new ArrayList<Item>());
+    /**
+     * ExpandableListViewセット
+     */
+    public void setListView() {
+        int sort = preferences.getInt("sort", 0);
+        for (String key : mapItems.keySet()) {
+            if (sort == 0) {
+                Collections.sort(Objects.requireNonNull(mapItems.get(key)), new NameComparator());
+            } else {
+                Collections.sort(Objects.requireNonNull(mapItems.get(key)), new DateComparator());
+            }
+        }
+
+        adapter = new ExpandableListAdapter(this, mapItems);
+        adapter.setListener(this);
         listView.setAdapter(adapter);
-        adapter.notifyDataSetChanged();
+        registerForContextMenu(listView);
     }
 
     @Override
@@ -402,32 +379,26 @@ public class MainActivity extends AppCompatActivity {
         switch(item.getItemId()){
             case R.id.main_menu_orderby:
                 // 並べ替え
-                final String itemList[] = getResources().getStringArray(R.array.sort_names);
+                final String[] itemList = getResources().getStringArray(R.array.sort_names);
 
                 final int sort = preferences.getInt("sort", 0);
                 final SharedPreferences.Editor editor = preferences.edit();
                 new AlertDialog.Builder(MainActivity.this)
                         .setIcon(android.R.drawable.ic_menu_sort_by_size)
                         .setTitle(getString(R.string.sort_title))
-                        .setSingleChoiceItems(itemList, sort, new DialogInterface.OnClickListener() {
-                            public void onClick(DialogInterface dialog, int whichButton) {
-                                editor.putInt("sort", whichButton);
+                        .setSingleChoiceItems(itemList, sort, (dialog, whichButton) -> {
+                            editor.putInt("sort", whichButton);
+                            editor.apply();
+                        })
+                        .setPositiveButton(getString(R.string.dialog_ok), (dialog, whichButton) -> {
+                            if(sort != preferences.getInt("sort", 0)) {
+                                setListView();
+                            }
+                        })
+                        .setNegativeButton(getString(R.string.dialog_cancel), (dialog, whichButton) -> {
+                            if(sort != preferences.getInt("sort", 0)) {
+                                editor.putInt("sort", sort);
                                 editor.apply();
-                            }
-                        })
-                        .setPositiveButton(getString(R.string.dialog_ok), new DialogInterface.OnClickListener() {
-                            public void onClick(DialogInterface dialog, int whichButton) {
-                                if(sort != preferences.getInt("sort", 0)) {
-                                    setListView();
-                                }
-                            }
-                        })
-                        .setNegativeButton(getString(R.string.dialog_cancel), new DialogInterface.OnClickListener() {
-                            public void onClick(DialogInterface dialog, int whichButton) {
-                                if(sort != preferences.getInt("sort", 0)) {
-                                    editor.putInt("sort", sort);
-                                    editor.apply();
-                                }
                             }
                         })
                         .show();
@@ -472,79 +443,77 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    @Override
-    public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
-        super.onCreateContextMenu(menu, v, menuInfo);
-        switch(v.getId()){
-            case R.id.list_view:
-                AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuInfo;
-                String title = listItems.get(info.position).getName();
-                menu.setHeaderTitle(title);
-                getMenuInflater().inflate(R.menu.list_menu, menu);
-                break;
-        }
-    }
-
-    @Override
-    public boolean onContextItemSelected(MenuItem menuItem) {
-        final AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuItem.getMenuInfo();
-        final Item item = listItems.get(info.position);
-
-        switch(menuItem.getItemId()){
-            case R.id.list_menu_hide:
-                // ファイルを非表示にする
-                String filePath = item.getPath() + "/" + item.getName();
-                if (!hideFiles.contains(filePath)) {
-                    hideFiles.add(filePath);
-                }
-                SharedPreferences.Editor editor = preferences.edit();
-                editor.putStringSet(SettingActivity.SETTING_HIDE_FILES, hideFiles);
-                editor.apply();
-
-                listItems.remove(info.position);
-                setListView();
-                return true;
-/*
-            case R.id.list_menu_rename:
-                // ファイル名を変更する
-                LayoutInflater inflater = LayoutInflater.from(this);
-                final View renameLayout = inflater.inflate(R.layout.rename_dialog, null);
-                new AlertDialog.Builder(this)
-                        .setTitle(listItems.get(info.position).getName())
-                        .setMessage(getString(R.string.rename_dialog_text))
-                        .setView(renameLayout)
-                        .setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                String newFileName = ((EditText) renameLayout.findViewById(R.id.editRename)).getText().toString().trim() + ".mp3";
-                                renameFile(
-                                        item.getPath() + "/" + item.getName(),
-                                        item.getPath() + "/" + newFileName
-                                );
-                                listItems.get(info.position).setName(newFileName);
-                                adapter.notifyDataSetChanged();
-                            }
-                        })
-                        .setNegativeButton("CANCEL", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                //
-                            }
-                        })
-                        .show();
-                return true;
- */
-        }
-        return false;
-    }
-
-    private void renameFile(String targetFile, String renameFile) {
-        File file = new File(targetFile);
-        File dest = new File(renameFile);
+    /**
+     * 検索結果をキャッシュから取得.
+     * @return Map<String, List<Item>> Item
+     */
+    private Map<String, List<Item>> readCache() {
         try {
-            file.renameTo(dest);
+            File file = new File(getFilesDir(), CACHE_FILE_NAME);
+            if (!file.canRead()) {
+                return null;
+            }
+
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                Path path = Paths.get(file.getPath());
+                FileTime fileTime = Files.getLastModifiedTime(path);
+                Date now = new Date();
+
+                //SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                //Log.d("test", "now:" + format.format(now));
+                //Log.d("test", "fileTime:" + format.format(new Date(fileTime.toMillis())));
+
+                long diff = (now.getTime() - fileTime.toMillis()) / 1000;
+                //Log.d("test", "diff:" + diff);
+                if (diff > (60 * 60 * 24)) {
+                    return null;
+                }
+            } else {
+                return null;
+            }
+
+            FileInputStream inputStream = openFileInput(file.getName());
+            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+
+            String lineBuffer;
+            String json = "";
+            while (true){
+                lineBuffer = reader.readLine();
+                if (lineBuffer != null){
+                    json += lineBuffer;
+                } else {
+                    break;
+                }
+            }
+
+            ObjectMapper mapper = new ObjectMapper();
+            return mapper.readValue(json, new TypeReference<Map<String, List<Item>>>() {});
         } catch (Exception e) {
-            Toast.makeText(this, e.getMessage(), Toast.LENGTH_LONG).show();
+            Log.e("ERROR", Objects.requireNonNull(e.getMessage()));
+            return null;
         }
+    }
+
+    /**
+     * 検索結果をキャッシュへ出力.
+     * @param items Map<String, List<Item>>
+     */
+    private void writeCache(Map<String, List<Item>> items) {
+        ObjectMapper objectMapper = new ObjectMapper();
+        try {
+            String json = objectMapper.writeValueAsString(items);
+            FileOutputStream outputStream = openFileOutput(CACHE_FILE_NAME, Context.MODE_PRIVATE);
+            outputStream.write(json.getBytes());
+        } catch (Exception e) {
+            Log.e("ERROR", Objects.requireNonNull(e.getMessage()));
+        }
+    }
+
+    /**
+     * アダプターからの更新依頼
+     */
+    @Override
+    public void updateRequest() {
+        adapter.notifyDataSetChanged();
     }
 }

@@ -94,7 +94,6 @@ public class BackgroundService extends Service {
                 }
 
                 mediaPlayer.release();
-                mediaPlayer = null;
             }
         }
     }
@@ -117,37 +116,31 @@ public class BackgroundService extends Service {
             Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_LONG).show();
         }
 
-        mediaPlayers.get(i).setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
-            @Override
-            public void onPrepared(MediaPlayer mediaPlayer) {
-                mediaPlayer.seekTo(0);
-                mediaPlayer.start();
-            }
+        mediaPlayers.get(i).setOnPreparedListener(mediaPlayer -> {
+            mediaPlayer.seekTo(0);
+            mediaPlayer.start();
         });
 
-        mediaPlayers.get(i).setOnCompletionListener(new MediaPlayer.OnCompletionListener(){
-            @Override
-            public void onCompletion(MediaPlayer mp) {
-                if (++index > (paths.size() - 1)) {
-                    index = 0;
-                }
-                sendBroadCast(index);
+        mediaPlayers.get(i).setOnCompletionListener(mp -> {
+            if (++index > (paths.size() - 1)) {
+                index = 0;
+            }
+            sendBroadCast(index);
 
-                try {
-                    mediaPlayers.get(i).release();
-                    mediaPlayers.set(i, null);
+            try {
+                mediaPlayers.get(i).release();
+                mediaPlayers.set(i, null);
 
-                    mediaPlayers.add(new MediaPlayer());
-                    setMediaPlayer(i + 1);
-                } catch (Exception e) {
-                    Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_LONG).show();
-                }
+                mediaPlayers.add(new MediaPlayer());
+                setMediaPlayer(i + 1);
+            } catch (Exception e) {
+                Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_LONG).show();
             }
         });
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Intent notificationIntent = new Intent(this, BackgroundService.class);
-            PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
+            PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
             Notification notification = new NotificationCompat.Builder(this,
                     createNotificationChannel(getPackageName(), "MP3-Player Background Service"))
                     .setOngoing(true)

@@ -62,18 +62,10 @@ public class Mp3Activity extends AppCompatActivity {
         progressDialog.show();
 
         handler = new Handler();
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                handler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        init();
-                        progressDialog.dismiss();
-                    }
-                });
-            }
-        }).start();
+        new Thread(() -> handler.post(() -> {
+            init();
+            progressDialog.dismiss();
+        })).start();
 
     }
 
@@ -81,15 +73,6 @@ public class Mp3Activity extends AppCompatActivity {
         Log.d("test", "Mp3.init start");
 
         preferences = getSharedPreferences(SettingActivity.PREFERENCES_NAME, Context.MODE_PRIVATE);
-        if(preferences.getInt(SettingActivity.SETTING_BACKGROUND, 0) == 0) {
-            findViewById(R.id.layoutMp3).setBackgroundColor(Color.parseColor(getString(R.string.list_color_white_background)));
-            ((TextView) findViewById(R.id.textVolume)).setTextColor(Color.parseColor(getString(R.string.list_color_black_background)));
-            ((TextView) findViewById(R.id.textSongList)).setTextColor(Color.parseColor(getString(R.string.list_color_black_background)));
-        } else{
-            findViewById(R.id.layoutMp3).setBackgroundColor(Color.parseColor(getString(R.string.list_color_black_background)));
-            ((TextView) findViewById(R.id.textVolume)).setTextColor(Color.parseColor(getString(R.string.list_color_white_background)));
-            ((TextView) findViewById(R.id.textSongList)).setTextColor(Color.parseColor(getString(R.string.list_color_white_background)));
-        }
 
         Intent intent = new Intent(getApplication(), BackgroundService.class);
         ArrayList<String> paths = getIntent().getStringArrayListExtra("paths");
@@ -159,7 +142,7 @@ public class Mp3Activity extends AppCompatActivity {
         unregisterReceiver(updateReceiver);
     }
 
-    private Handler updateHandler = new Handler() {
+    private final Handler updateHandler = new Handler() {
         @Override
         public void handleMessage(Message message) {
             Bundle bundle = message.getData();
@@ -182,12 +165,9 @@ public class Mp3Activity extends AppCompatActivity {
             timer.scheduleAtFixedRate(new TimerTask() {
                 @Override
                 public void run() {
-                handler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        listItems.get(index).setNow(listItems.get(index).getNow() + 1);
-                        adapter.notifyDataSetChanged();
-                    }
+                handler.post(() -> {
+                    listItems.get(index).setNow(listItems.get(index).getNow() + 1);
+                    adapter.notifyDataSetChanged();
                 });
                 }
             },1000,1000);
